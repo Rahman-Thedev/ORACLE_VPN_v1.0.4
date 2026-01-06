@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle VPN | Secure the Node</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --dark-bg: #0a0a0a;
+            --panel-bg: #141414;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--neon-green);
+            font-family: 'Fira Code', monospace;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+        }
+
+        /* CRT Scanline Effect */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .hacker-border {
+            border: 1px solid var(--neon-green);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+        }
+
+        .glitch-text:hover {
+            text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9;
+        }
+
+        .btn-connect {
+            background: transparent;
+            border: 2px solid var(--neon-green);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn-connect:hover {
+            background: var(--neon-green);
+            color: black;
+            box-shadow: 0 0 20px var(--neon-green);
+        }
+
+        .btn-active {
+            background: #ff3e3e;
+            border-color: #ff3e3e;
+            color: white;
+            box-shadow: 0 0 20px #ff3e3e;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            background: #555;
+        }
+
+        .status-online {
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: var(--neon-green); }
+
+        .location-card {
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .location-card:hover {
+            background: rgba(0, 255, 65, 0.1);
+            border-left: 3px solid var(--neon-green);
+        }
+
+        .location-active {
+            background: rgba(0, 255, 65, 0.2);
+            border-left: 3px solid var(--neon-green);
+        }
+
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: var(--panel-bg);
+            border: 1px solid var(--neon-green);
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex items-center justify-center">
+
+    <div class="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+        
+        <!-- Header Section -->
+        <div class="lg:col-span-12 mb-4">
+            <h1 class="text-4xl font-bold glitch-text italic">ORACLE_VPN_v1.0.4</h1>
+            <p class="text-xs opacity-70 mt-1">Status: <span id="main-status">DISCONNECTED</span> | Encrypting via AES-256-GCM</p>
+        </div>
+
+        <!-- Left Panel: Subscription & Stats -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="hacker-border bg-[#141414] p-6 rounded-sm">
+                <h2 class="text-lg font-bold mb-4 flex items-center">
+                    <span class="mr-2">ACCESS_KEY</span>
+                </h2>
+                <div id="sub-section">
+                    <p class="text-xs mb-4 opacity-80">No active uplink found. Generate sub-code for ₦1,000.</p>
+                    <input type="text" id="sub-code-input" placeholder="ENTER CODE..." class="w-full bg-black border border-[#333] p-2 text-sm focus:outline-none focus:border-[#00ff41] mb-3">
+                    <button onclick="activateSub()" class="w-full text-xs py-2 border border-[#00ff41] hover:bg-[#00ff41] hover:text-black transition">VALIDATE</button>
+                    <p class="text-[10px] mt-4 opacity-50 uppercase leading-tight">Encryption services provided for legal privacy enhancement only.</p>
+                </div>
+                <div id="sub-active" class="hidden">
+                    <p class="text-xs text-green-400 font-bold mb-1">PREMIUM ACCESS: ACTIVE</p>
+                    <p class="text-[10px] opacity-60">EXPIRES: 2026-02-15</p>
+                    <div class="mt-4 pt-4 border-t border-[#333]">
+                        <p class="text-[10px] opacity-50 mb-1">DATA TRAFFIC</p>
+                        <div class="w-full bg-[#222] h-1">
+                            <div id="traffic-bar" class="bg-[#00ff41] h-full" style="width: 35%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hacker-border bg-[#141414] p-6 rounded-sm">
+                <h2 class="text-lg font-bold mb-2">TELEMETRY</h2>
+                <div class="text-[11px] space-y-1 opacity-80">
+                    <p>IP: <span id="current-ip">197.210.64.12</span></p>
+                    <p>ISP: Globalcom Limited</p>
+                    <p>DNS: 8.8.8.8 (Google)</p>
+                    <p>PING: <span id="ping-val">24ms</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Panel: Connection Control -->
+        <div class="lg:col-span-4 flex flex-col items-center justify-center space-y-8 py-8 hacker-border bg-[#141414] rounded-sm relative overflow-hidden">
+            <div id="power-ring" class="relative">
+                <svg width="200" height="200" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#222" stroke-width="2" />
+                    <circle id="progress-circle" cx="50" cy="50" r="45" fill="none" stroke="#00ff41" stroke-width="2" stroke-dasharray="283" stroke-dashoffset="283" stroke-linecap="round" />
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <button id="connect-btn" onclick="toggleConnection()" class="btn-connect w-32 h-32 rounded-full flex flex-col items-center justify-center">
+                        <span id="btn-text" class="font-bold">CONNECT</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <p id="connection-timer" class="text-2xl font-bold tracking-widest opacity-30">00:00:00</p>
+                <p id="location-display" class="text-xs mt-2 uppercase">Target: NONE</p>
+            </div>
+        </div>
+
+        <!-- Right Panel: Locations -->
+        <div class="lg:col-span-4 flex flex-col hacker-border bg-[#141414] rounded-sm max-h-[500px]">
+            <div class="p-4 border-b border-[#333] sticky top-0 bg-[#141414] z-10">
+                <h2 class="text-sm font-bold">AVAILABLE NODES [22]</h2>
+            </div>
+            <div id="locations-list" class="flex-1 overflow-y-auto p-2">
+                <!-- Locations will be injected here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Floating Notification -->
+    <div id="notification"></div>
+
+    <script>
+        const countries = [
+            { name: "United States", code: "US", ip: "45.12.33.101", load: "42%" },
+            { name: "United Kingdom", code: "GB", ip: "185.20.10.45", load: "21%" },
+            { name: "Germany", code: "DE", ip: "84.22.15.66", load: "67%" },
+            { name: "Japan", code: "JP", ip: "103.4.11.200", load: "89%" },
+            { name: "Canada", code: "CA", ip: "159.20.1.33", load: "12%" },
+            { name: "Switzerland", code: "CH", ip: "179.43.14.5", load: "05%" },
+            { name: "Netherlands", code: "NL", ip: "95.21.14.120", load: "33%" },
+            { name: "Singapore", code: "SG", ip: "46.12.99.11", load: "54%" },
+            { name: "France", code: "FR", ip: "51.15.8.10", load: "41%" },
+            { name: "Australia", code: "AU", ip: "13.21.0.9", load: "28%" },
+            { name: "Brazil", code: "BR", ip: "177.54.3.22", load: "70%" },
+            { name: "South Africa", code: "ZA", ip: "102.12.5.4", load: "19%" },
+            { name: "India", code: "IN", ip: "103.21.4.1", load: "61%" },
+            { name: "Iceland", code: "IS", ip: "185.112.0.2", load: "08%" },
+            { name: "Sweden", code: "SE", ip: "193.10.11.4", load: "14%" },
+            { name: "Norway", code: "NO", ip: "158.3.4.11", load: "11%" },
+            { name: "Spain", code: "ES", ip: "80.12.4.5", load: "44%" },
+            { name: "Italy", code: "IT", ip: "93.1.5.10", load: "50%" },
+            { name: "Finland", code: "FI", ip: "135.1.4.12", load: "09%" },
+            { name: "Turkey", code: "TR", ip: "176.1.4.55", load: "77%" },
+            { name: "Nigeria", code: "NG", ip: "105.1.2.3", load: "92%" },
+            { name: "South Korea", code: "KR", ip: "211.1.4.9", load: "48%" }
+        ];
+
+        let isConnected = false;
+        let selectedNode = null;
+        let isPremium = false;
+        let timerInterval = null;
+        let seconds = 0;
+
+        function init() {
+            const list = document.getElementById('locations-list');
+            countries.forEach((c, index) => {
+                const div = document.createElement('div');
+                div.className = 'location-card p-3 rounded text-xs flex justify-between items-center mb-1';
+                div.innerHTML = `
+                    <span><span class="opacity-50 mr-2">${index+1}.</span> ${c.name}</span>
+                    <span class="opacity-40 text-[9px]">${c.load} LOAD</span>
+                `;
+                div.onclick = () => selectNode(c, div);
+                list.appendChild(div);
+            });
+            
+            // Initial notification
+            showNotify("SYSTEM READY: WAITING FOR UPLINK...");
+        }
+
+        function selectNode(node, element) {
+            document.querySelectorAll('.location-card').forEach(el => el.classList.remove('location-active'));
+            element.classList.add('location-active');
+            selectedNode = node;
+            document.getElementById('location-display').innerText = `Target: ${node.name}`;
+            showNotify(`TARGET NODE SET: ${node.name}`);
+        }
+
+        function toggleConnection() {
+            if (!isPremium) {
+                showNotify("ERROR: SUBSCRIPTION REQUIRED [₦1,000]");
+                return;
+            }
+            if (!selectedNode) {
+                showNotify("ERROR: SELECT A NODE FIRST");
+                return;
+            }
+
+            const btn = document.getElementById('connect-btn');
+            const btnText = document.getElementById('btn-text');
+            const circle = document.getElementById('progress-circle');
+            const mainStatus = document.getElementById('main-status');
+
+            if (!isConnected) {
+                // Connecting
+                btnText.innerText = "LINKING...";
+                circle.style.transition = "stroke-dashoffset 2s ease";
+                circle.style.strokeDashoffset = "0";
+                
+                setTimeout(() => {
+                    isConnected = true;
+                    btnText.innerText = "STOP";
+                    btn.classList.add('btn-active');
+                    mainStatus.innerText = "CONNECTED";
+                    mainStatus.style.color = "#00ff41";
+                    document.getElementById('current-ip').innerText = selectedNode.ip;
+                    document.getElementById('ping-val').innerText = (Math.floor(Math.random() * 200) + 20) + "ms";
+                    startTimer();
+                    showNotify(`SECURE TUNNEL ESTABLISHED: ${selectedNode.name}`);
+                }, 2000);
+
+            } else {
+                // Disconnecting
+                isConnected = false;
+                btnText.innerText = "CONNECT";
+                btn.classList.remove('btn-active');
+                circle.style.strokeDashoffset = "283";
+                mainStatus.innerText = "DISCONNECTED";
+                mainStatus.style.color = "#555";
+                document.getElementById('current-ip').innerText = "197.210.64.12";
+                stopTimer();
+                showNotify("TUNNEL COLLAPSED. IP REVERTED.");
+            }
+        }
+
+        function activateSub() {
+            const input = document.getElementById('sub-code-input').value;
+            // Shady validation: any code starting with "ORACLE" or simply non-empty for demo
+            if (input.length > 5) {
+                isPremium = true;
+                document.getElementById('sub-section').classList.add('hidden');
+                document.getElementById('sub-active').classList.remove('hidden');
+                showNotify("ACCESS GRANTED. ENCRYPTION PROTOCOLS ENABLED.");
+            } else {
+                showNotify("ERROR: INVALID ACCESS KEY");
+            }
+        }
+
+        function startTimer() {
+            seconds = 0;
+            document.getElementById('connection-timer').style.opacity = "1";
+            timerInterval = setInterval(() => {
+                seconds++;
+                const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+                const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+                const s = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('connection-timer').innerText = `${h}:${m}:${s}`;
+                
+                // Simulate traffic bar
+                const bar = document.getElementById('traffic-bar');
+                const currentWidth = parseFloat(bar.style.width);
+                if(currentWidth < 100) bar.style.width = (currentWidth + 0.1) + "%";
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            document.getElementById('connection-timer').style.opacity = "0.3";
+        }
+
+        function showNotify(msg) {
+            const n = document.getElementById('notification');
+            n.innerText = `> ${msg}`;
+            n.style.display = 'block';
+            setTimeout(() => { n.style.display = 'none'; }, 3000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
